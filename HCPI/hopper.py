@@ -6,7 +6,7 @@ import numpy as np
 from gym import spaces
 from mujoco_py import load_model_from_path, MjSim, MjViewer
 
-from util import seeding
+from HCPI.util import seeding
 
 
 class HopperEnv:

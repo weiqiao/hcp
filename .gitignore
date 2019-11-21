@@ -118,4 +118,6 @@ xml/gen_xmls/
 *.pth
 **/stats/**
 
+.DS_Store
+
 
