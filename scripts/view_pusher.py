@@ -21,6 +21,7 @@ if __name__ == '__main__':
     sim = MjSim(model, nsubsteps=20)
     sim.reset()
     sim.step()
+    # sim.render(64,64) # observation
     viewer = MjViewer(sim)
     while True:
         ctrl = (np.random.random(8) - 0.5)*2

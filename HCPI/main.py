@@ -6,12 +6,12 @@ import shutil
 
 import numpy as np
 import torch
-from hopper import HopperEnv
-from policy import MLPPolicy
-from ppo import PPO
+from HCPI.hopper import HopperEnv
+from HCPI.policy import MLPPolicy
+from HCPI.ppo import PPO
 
-from util import logger
-from util.subproc_vec_env import SubprocVecEnv
+from HCPI.util import logger
+from HCPI.util.subproc_vec_env import SubprocVecEnv
 
 
 def make_simrobot(env_name,
@@ -151,7 +151,7 @@ def main():
     parser.add_argument('--save_dir', type=str, default='./data')
     parser.add_argument('--test', action='store_true', help='test mode')
     parser.add_argument('--robot_dir', type=str,
-                        default='./robots')
+                        default='../xml/gen_xmls/hopper')
     parser.add_argument('--pretrain_dir', type=str,
                         default=None)
     parser.add_argument('--train_ratio', type=float, default=0.8,

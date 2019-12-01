@@ -5,10 +5,9 @@ import torch
 from torch import optim
 from torch.autograd import Variable
 
-import mutils
-from util import logger
-from util.running_mean_std import RunningMeanStd
-
+from HCPI import mutils
+from HCPI.util import logger
+from HCPI.util.running_mean_std import RunningMeanStd
 
 class PPOModel(object):
     def __init__(self, policy, ob_space, ac_space, ent_coef,
@@ -27,7 +26,7 @@ class PPOModel(object):
                             robot_num=robot_num,
                             embed_dim=embed_dim,
                             with_embed=with_embed)
-        self.model.cuda()
+        #self.model.cuda()
         self.optimizer = self.get_optimizer(weight_decay, lr)
         self.global_step = 0
         self.model_dir = os.path.join(save_dir, 'model')
@@ -51,12 +50,14 @@ class PPOModel(object):
         if self.with_embed:
             ob = obs[:, :-1]
             robot_id = obs[:, -1]
-            robot_id = Variable(torch.from_numpy(robot_id)).long().cuda()
+            #robot_id = Variable(torch.from_numpy(robot_id)).long().cuda()
+            robot_id = Variable(torch.from_numpy(robot_id)).long()
         else:
             ob = obs
             robot_id = None
         ob = self.normalize_ob(ob)
-        ob = Variable(torch.from_numpy(ob)).float().cuda()
+        #ob = Variable(torch.from_numpy(ob)).float().cuda()
+        ob = Variable(torch.from_numpy(ob)).float()
 
         act_neglogp = None
         val = None
@@ -77,12 +78,14 @@ class PPOModel(object):
         if self.with_embed:
             ob = obs[:, :-1]
             robot_id = obs[:, -1]
-            robot_id = Variable(torch.from_numpy(robot_id)).long().cuda()
+            #robot_id = Variable(torch.from_numpy(robot_id)).long().cuda()
+            robot_id = Variable(torch.from_numpy(robot_id)).long()
         else:
             ob = obs
             robot_id = None
         ob = self.normalize_ob(ob)
-        ob = Variable(torch.from_numpy(ob)).float().cuda()
+        #ob = Variable(torch.from_numpy(ob)).float().cuda()
+        ob = Variable(torch.from_numpy(ob)).float()
         return self.model.value(ob, robot_id).cpu().data.numpy()
 
     def train(self, obs, actions, returns, old_acts_neglogp, values):
@@ -90,17 +93,23 @@ class PPOModel(object):
         if self.with_embed:
             ob = obs[:, :-1]
             robot_id = obs[:, -1]
-            robot_id = Variable(torch.from_numpy(robot_id)).long().cuda()
+            #robot_id = Variable(torch.from_numpy(robot_id)).long().cuda()
+            robot_id = Variable(torch.from_numpy(robot_id)).long()
         else:
             ob = obs
             robot_id = None
         ob = self.normalize_ob(ob)
-        ob = Variable(torch.from_numpy(ob)).float().cuda()
-        actions = Variable(torch.from_numpy(actions)).float().cuda()
-        returns = Variable(torch.from_numpy(returns)).float().cuda()
+        # ob = Variable(torch.from_numpy(ob)).float().cuda()
+        # actions = Variable(torch.from_numpy(actions)).float().cuda()
+        # returns = Variable(torch.from_numpy(returns)).float().cuda()
+        ob = Variable(torch.from_numpy(ob)).float()
+        actions = Variable(torch.from_numpy(actions)).float()
+        returns = Variable(torch.from_numpy(returns)).float()
         old_acts_neglogp = Variable(torch.from_numpy(old_acts_neglogp))
-        old_acts_neglogp = old_acts_neglogp.float().cuda()
-        values = Variable(torch.from_numpy(values)).float().cuda()
+        # old_acts_neglogp = old_acts_neglogp.float().cuda()
+        # values = Variable(torch.from_numpy(values)).float().cuda()
+        old_acts_neglogp = old_acts_neglogp.float()
+        values = Variable(torch.from_numpy(values)).float()
         advs = returns - values
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         res = self.model.step_and_eval(ob, robot_id, actions)

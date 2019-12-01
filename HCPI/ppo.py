@@ -2,11 +2,11 @@ import time
 from collections import deque
 
 import numpy as np
-from runner import Runner
+from HCPI.runner import Runner
 
-from model import PPOModel
-from mutils import explained_variance, safemean
-from util import logger
+from HCPI.model import PPOModel
+from HCPI.mutils import explained_variance, safemean
+from HCPI.util import logger
 
 
 class PPO:

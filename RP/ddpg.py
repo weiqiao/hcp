@@ -9,12 +9,12 @@ from torch import nn
 from torch import optim
 from torch.autograd import Variable
 
-from HCPE import mutils
-from HCPE.memory import Memory
-from HCPE.model import Actor, Critic
-from HCPE.mutils import OnlineMeanStd, safemean
-from HCPE.noise import OrnsteinUhlenbeckActionNoise, UniformNoise, NormalActionNoise
-from HCPE.util import logger
+from RP import mutils
+from RP.memory import Memory
+from RP.model import Actor, Critic
+from RP.mutils import OnlineMeanStd, safemean
+from RP.noise import OrnsteinUhlenbeckActionNoise, UniformNoise, NormalActionNoise
+from RP.util import logger
 
 
 class DDPG:
@@ -46,6 +46,7 @@ class DDPG:
         self.pretrain_dir = args.pretrain_dir
         os.makedirs(self.model_dir, exist_ok=True)
         self.global_step = 0
+        self.use_gpu = args.use_gpu
         self.actor = Actor(ob_dim=ob_dim,
                            act_dim=ac_dim,
                            hid1_dim=args.hid1_dim,
@@ -112,8 +113,8 @@ class DDPG:
                 self.obs_oms = OnlineMeanStd(shape=(1, ob_dim))
             else:
                 self.obs_oms = None
-
-        self.cuda()
+        if self.use_gpu:
+            self.cuda()
 
     def test(self, render=False, record=True, slow_t=0):
         dist, succ_rate = self.rollout(render=render,
@@ -249,13 +250,22 @@ class DDPG:
         obs1_t = batch_data['obs1']
         obs0_t = self.normalize(obs0_t, self.obs_oms)
         obs1_t = self.normalize(obs1_t, self.obs_oms)
-        obs0 = Variable(obs0_t).float().cuda()
-        with torch.no_grad():
-            vol_obs1 = Variable(obs1_t).float().cuda()
+        if self.use_gpu:
+            obs0 = Variable(obs0_t).float().cuda()
+            with torch.no_grad():
+                vol_obs1 = Variable(obs1_t).float().cuda()
 
-        rewards = Variable(batch_data['rewards']).float().cuda()
-        actions = Variable(batch_data['actions']).float().cuda()
-        terminals = Variable(batch_data['terminals1']).float().cuda()
+            rewards = Variable(batch_data['rewards']).float().cuda()
+            actions = Variable(batch_data['actions']).float().cuda()
+            terminals = Variable(batch_data['terminals1']).float().cuda()
+        else:
+            obs0 = Variable(obs0_t).float()
+            with torch.no_grad():
+                vol_obs1 = Variable(obs1_t).float()
+
+            rewards = Variable(batch_data['rewards']).float()
+            actions = Variable(batch_data['actions']).float()
+            terminals = Variable(batch_data['terminals1']).float()
 
         cri_q_val = self.critic(obs0, actions)
         with torch.no_grad():
@@ -289,7 +299,14 @@ class DDPG:
 
         self.soft_update(self.actor_target, self.actor, self.tau)
         self.soft_update(self.critic_target, self.critic, self.tau)
-        return act_loss.cpu().data.numpy(), cri_loss.cpu().data.numpy()
+
+        if self.use_gpu:
+            ret_act_loss = act_loss.cpu().data.numpy()
+            ret_cri_loss = cri_loss.cpu().data.numpy()
+        else:
+            ret_act_loss = act_loss.data.numpy()
+            ret_cri_loss = cri_loss.data.numpy()
+        return ret_act_loss, ret_cri_loss
 
     def normalize(self, x, stats):
         if stats is None:
@@ -416,18 +433,33 @@ class DDPG:
         return mean_final_dist, succ_rate
 
     def log_model_weights(self):
-        for name, param in self.actor.named_parameters():
-            logger.logkv('actor/' + name,
-                         param.clone().cpu().data.numpy())
-        for name, param in self.actor_target.named_parameters():
-            logger.logkv('actor_target/' + name,
-                         param.clone().cpu().data.numpy())
-        for name, param in self.critic.named_parameters():
-            logger.logkv('critic/' + name,
-                         param.clone().cpu().data.numpy())
-        for name, param in self.critic_target.named_parameters():
-            logger.logkv('critic_target/' + name,
-                         param.clone().cpu().data.numpy())
+        if self.use_gpu:
+            for name, param in self.actor.named_parameters():
+                logger.logkv('actor/' + name,
+                             param.clone().cpu().data.numpy())
+            for name, param in self.actor_target.named_parameters():
+                logger.logkv('actor_target/' + name,
+                             param.clone().cpu().data.numpy())
+            for name, param in self.critic.named_parameters():
+                logger.logkv('critic/' + name,
+                             param.clone().cpu().data.numpy())
+            for name, param in self.critic_target.named_parameters():
+                logger.logkv('critic_target/' + name,
+                             param.clone().cpu().data.numpy())
+        else:
+            for name, param in self.actor.named_parameters():
+                logger.logkv('actor/' + name,
+                             param.data.numpy())
+            for name, param in self.actor_target.named_parameters():
+                logger.logkv('actor_target/' + name,
+                             param.data.numpy())
+            for name, param in self.critic.named_parameters():
+                logger.logkv('critic/' + name,
+                             param.data.numpy())
+            for name, param in self.critic_target.named_parameters():
+                logger.logkv('critic_target/' + name,
+                             param.data.numpy())
+
 
     def random_action(self):
         act = np.random.uniform(-1., 1., self.ac_dim)
@@ -435,9 +467,15 @@ class DDPG:
 
     def policy(self, obs, stochastic=True):
         self.actor.eval()
-        ob = Variable(torch.from_numpy(obs)).float().cuda().view(1, -1)
+        if self.use_gpu:
+            ob = Variable(torch.from_numpy(obs)).float().cuda().view(1, -1)
+        else:
+            ob = Variable(torch.from_numpy(obs)).float().view(1, -1)
         act = self.actor(ob)
-        act = act.cpu().data.numpy()
+        if self.use_gpu:
+            act = act.cpu().data.numpy()
+        else:
+            act = act.data.numpy()
         if stochastic:
             act = self.action_noise(act)
         self.actor.train()

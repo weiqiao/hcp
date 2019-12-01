@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from distribution import DiagNormal
+from HCPI.distribution import DiagNormal
 
 
 class MLPPolicy(nn.Module):

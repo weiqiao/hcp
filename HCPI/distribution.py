@@ -10,7 +10,8 @@ class DiagNormal:
         self.std = torch.exp(logstd)
 
     def sample(self, sample_shape=torch.Size()):
-        eps = Variable(torch.randn(sample_shape)).cuda()
+        #eps = Variable(torch.randn(sample_shape)).cuda()
+        eps = Variable(torch.randn(sample_shape))
         return self.mean + eps * self.std
 
     def neglogp(self, x):
